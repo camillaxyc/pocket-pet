@@ -48,7 +48,7 @@ export default function WellnessChecklist({ displayMode = 'ombre' }) {
   const bgClass = getBgClass();
 
   return (
-    <div className={`${bgClass} rounded-2xl p-5 border-2 ${displayMode === 'dark' ? 'border-gray-600' : displayMode === 'light' ? 'border-gray-300' : 'border-blue-100'} shadow-lg h-full`}>
+    <div className={`${bgClass} rounded-2xl p-5 border-2 ${displayMode === 'dark' ? 'border-gray-600' : displayMode === 'light' ? 'border-gray-300' : 'border-blue-100'} shadow-lg h-[284px]`}>
       <h2 className={`${displayMode === 'dark' ? 'text-purple-300' : displayMode === 'light' ? 'text-gray-800' : 'text-purple-700'} text-xl font-bold mb-4 text-center`}>💜 Daily Self-Care</h2>
       <div className="space-y-3">
         {wellnessItems.map(item => (

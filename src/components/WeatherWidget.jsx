@@ -25,12 +25,13 @@ const getWeatherEmoji = (weatherCode) => {
   return '☀️';
 };
 
-export default function PositiveQuote({ zipcode, displayMode = 'ombre' }) {
+export default function WeatherWidget({ zipcode, displayMode = 'ombre' }) {
   const [weather, setWeather] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [showWeeklyForecast, setShowWeeklyForecast] = useState(false);
+  const [forecastIndex, setForecastIndex] = useState(0);
   const [unit, setUnit] = useState(() => {
     // Load preference from localStorage, default to Fahrenheit
     return localStorage.getItem('tempUnit') || 'fahrenheit';
@@ -187,7 +188,7 @@ export default function PositiveQuote({ zipcode, displayMode = 'ombre' }) {
   };
 
   return (
-    <div className={`${bgClass} rounded-2xl p-5 border-2 ${displayMode === 'dark' ? 'border-gray-600' : displayMode === 'light' ? 'border-gray-300' : 'border-blue-100'} shadow-lg text-center h-full flex flex-col items-center justify-center relative`}>
+    <div className={`${bgClass} rounded-2xl p-5 border-2 ${displayMode === 'dark' ? 'border-gray-600' : displayMode === 'light' ? 'border-gray-300' : 'border-blue-100'} shadow-lg text-center h-[284px] flex flex-col items-center relative overflow-hidden`}>
       <div className="absolute top-3 right-3 flex gap-2">
         <button
           onClick={toggleUnit}
@@ -206,16 +207,18 @@ export default function PositiveQuote({ zipcode, displayMode = 'ombre' }) {
       </div>
 
       <div
-        className="transition-opacity duration-200 ease-in-out w-full"
+        className="transition-opacity duration-200 ease-in-out w-full flex-1 flex flex-col pt-8"
         style={{ opacity: isTransitioning ? 0 : 1 }}
       >
         {loading ? (
-          <p className={`${displayMode === 'dark' ? 'text-purple-300' : displayMode === 'light' ? 'text-gray-700' : 'text-purple-700'} font-bold`}>Loading weather...</p>
+          <div className="flex-1 flex items-center justify-center">
+            <p className={`${displayMode === 'dark' ? 'text-purple-300' : displayMode === 'light' ? 'text-gray-700' : 'text-purple-700'} font-bold`}>Loading weather...</p>
+          </div>
         ) : weather ? (
           <>
             {!showWeeklyForecast ? (
               // Today's weather view
-              <>
+              <div className="flex-1 flex flex-col items-center justify-center">
                 <p className={`${displayMode === 'dark' ? 'text-purple-300' : displayMode === 'light' ? 'text-gray-800' : 'text-purple-700'} text-lg font-bold mb-2`}>{today}</p>
                 <div className="text-5xl mb-2">{weather.emoji}</div>
                 <p className={`${displayMode === 'dark' ? 'text-purple-300' : displayMode === 'light' ? 'text-gray-800' : 'text-purple-700'} font-bold text-2xl mb-1`}>
@@ -230,47 +233,65 @@ export default function PositiveQuote({ zipcode, displayMode = 'ombre' }) {
                 <p className={`${displayMode === 'dark' ? 'text-purple-500' : displayMode === 'light' ? 'text-gray-600' : 'text-purple-500'} text-sm mt-1`}>
                   {weather.location}
                 </p>
-              </>
+              </div>
             ) : (
-              // Weekly forecast view
-              <div className="w-full">
-                <p className={`${displayMode === 'dark' ? 'text-purple-300' : displayMode === 'light' ? 'text-gray-800' : 'text-purple-700'} text-lg font-bold mb-3`}>7-Day Forecast</p>
-                <p className={`${displayMode === 'dark' ? 'text-purple-500' : displayMode === 'light' ? 'text-gray-600' : 'text-purple-500'} text-sm mb-3`}>
+              // Weekly forecast carousel view
+              <div className="flex-1 flex flex-col w-full">
+                <p className={`${displayMode === 'dark' ? 'text-purple-300' : displayMode === 'light' ? 'text-gray-800' : 'text-purple-700'} text-base font-bold mb-1`}>7-Day Forecast</p>
+                <p className={`${displayMode === 'dark' ? 'text-purple-500' : displayMode === 'light' ? 'text-gray-600' : 'text-purple-500'} text-xs mb-2`}>
                   {weather.location}
                 </p>
-                <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                  {weather.weeklyForecast.map((day, index) => (
-                    <div
-                      key={index}
-                      className={`flex items-center justify-between px-3 py-2 rounded-lg ${
-                        displayMode === 'dark'
-                          ? 'bg-gray-600/50'
-                          : displayMode === 'light'
-                          ? 'bg-gray-100'
-                          : 'bg-white/50'
-                      }`}
-                    >
-                      <span className={`${displayMode === 'dark' ? 'text-purple-300' : displayMode === 'light' ? 'text-gray-800' : 'text-purple-700'} text-sm font-semibold w-24 text-left`}>
-                        {day.date}
-                      </span>
-                      <span className="text-xl">{getWeatherEmoji(day.weatherCode)}</span>
-                      <span className={`${displayMode === 'dark' ? 'text-purple-400' : displayMode === 'light' ? 'text-gray-700' : 'text-purple-600'} text-sm font-medium`}>
-                        <span className="text-blue-600 dark:text-blue-400">{day.tempMin}°</span>
-                        {' / '}
-                        <span className="text-red-600 dark:text-red-400">{day.tempMax}°</span>
-                      </span>
-                    </div>
-                  ))}
+                <div className="flex items-stretch gap-1 flex-1">
+                  <button
+                    onClick={() => setForecastIndex(i => Math.max(0, i - 1))}
+                    disabled={forecastIndex === 0}
+                    className={`text-xs px-1 rounded transition-all cursor-pointer self-center ${forecastIndex === 0 ? 'opacity-20 cursor-default' : 'opacity-80 hover:opacity-100'} ${displayMode === 'dark' ? 'text-purple-300' : 'text-purple-600'}`}
+                  >◀</button>
+                  <div className="grid grid-cols-3 gap-3 flex-1">
+                    {weather.weeklyForecast.slice(forecastIndex, forecastIndex + 3).map((day, index) => {
+                      const isToday = forecastIndex + index === 0;
+                      return (
+                      <div
+                        key={forecastIndex + index}
+                        className={`flex flex-col items-center justify-center rounded-lg ${
+                          displayMode === 'dark' ? 'bg-gray-600/50' : displayMode === 'light' ? 'bg-gray-100' : 'bg-white/50'
+                        } ${isToday ? `border-2 ${displayMode === 'dark' ? 'border-purple-400' : displayMode === 'light' ? 'border-blue-400' : 'border-purple-400'}` : ''}`}
+                      >
+                        <span className={`${displayMode === 'dark' ? 'text-purple-300' : displayMode === 'light' ? 'text-gray-800' : 'text-purple-700'} text-xs font-semibold`}>
+                          {day.date.split(',')[0]}
+                        </span>
+                        <span className={`${displayMode === 'dark' ? 'text-purple-400' : displayMode === 'light' ? 'text-gray-500' : 'text-purple-500'} text-xs`}>
+                          {day.date.split(',')[1]?.trim()}
+                        </span>
+                        <span className="text-xl my-1">{getWeatherEmoji(day.weatherCode)}</span>
+                        <span className={`${displayMode === 'dark' ? 'text-purple-400' : displayMode === 'light' ? 'text-gray-700' : 'text-purple-600'} text-xs`}>
+                          <span className="text-blue-500">{day.tempMin}°</span>
+                          <span className="opacity-40">/</span>
+                          <span className="text-red-400">{day.tempMax}°</span>
+                        </span>
+                      </div>
+                      );
+                    })}
+                  </div>
+                  <button
+                    onClick={() => setForecastIndex(i => Math.min(weather.weeklyForecast.length - 3, i + 1))}
+                    disabled={forecastIndex >= weather.weeklyForecast.length - 3}
+                    className={`text-xs px-1 rounded transition-all cursor-pointer self-center ${forecastIndex >= weather.weeklyForecast.length - 3 ? 'opacity-20 cursor-default' : 'opacity-80 hover:opacity-100'} ${displayMode === 'dark' ? 'text-purple-300' : 'text-purple-600'}`}
+                  >▶</button>
                 </div>
               </div>
             )}
           </>
         ) : error ? (
-          <p className={`${displayMode === 'dark' ? 'text-purple-400' : displayMode === 'light' ? 'text-gray-600' : 'text-purple-600'} text-sm`}>
-            Weather unavailable - check your zipcode
-          </p>
+          <div className="flex-1 flex items-center justify-center">
+            <p className={`${displayMode === 'dark' ? 'text-purple-400' : displayMode === 'light' ? 'text-gray-600' : 'text-purple-600'} text-sm`}>
+              Weather unavailable - check your zipcode
+            </p>
+          </div>
         ) : (
-          <p className={`${displayMode === 'dark' ? 'text-purple-300' : displayMode === 'light' ? 'text-gray-700' : 'text-purple-700'} font-bold`}>Loading...</p>
+          <div className="flex-1 flex items-center justify-center">
+            <p className={`${displayMode === 'dark' ? 'text-purple-300' : displayMode === 'light' ? 'text-gray-700' : 'text-purple-700'} font-bold`}>Loading...</p>
+          </div>
         )}
       </div>
     </div>

@@ -4,7 +4,7 @@ import UsernameInput from './components/UsernameInput';
 import PetSelection from './components/PetSelection';
 import PetDisplay from './components/PetDisplay';
 import WellnessChecklist from './components/WellnessChecklist';
-import PositiveQuote from './components/PositiveQuote';
+import PositiveQuote from './components/WeatherWidget';
 import Quote from './components/Quote';
 import TodoList from './components/TodoList';
 import Journal from './components/Journal';
