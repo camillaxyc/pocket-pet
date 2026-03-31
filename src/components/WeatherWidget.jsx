@@ -2,18 +2,6 @@ import { useState, useEffect } from 'react';
 
 const getToday = () => new Date().toDateString();
 
-const weatherEmojis = {
-  'Clear': '☀️',
-  'Clouds': '☁️',
-  'Rain': '🌧️',
-  'Drizzle': '🌦️',
-  'Thunderstorm': '⛈️',
-  'Snow': '❄️',
-  'Mist': '🌫️',
-  'Fog': '🌫️',
-  'Haze': '🌫️'
-};
-
 // Helper function to get emoji from weather code
 const getWeatherEmoji = (weatherCode) => {
   if (weatherCode === 0) return '☀️';
@@ -194,7 +182,6 @@ export default function WeatherWidget({ zipcode, displayMode = 'ombre' }) {
 
   const bgClass = getBgClass();
   const unitSymbol = unit === 'fahrenheit' ? 'F' : 'C';
-  const switchToUnit = unit === 'fahrenheit' ? 'Celsius' : 'Fahrenheit';
 
   const getButtonClass = () => {
     if (displayMode === 'ombre') {

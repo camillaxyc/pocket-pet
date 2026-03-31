@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DAYS = ['Su','Mo','Tu','We','Th','Fr','Sa'];
@@ -128,6 +128,13 @@ export default function Records({ displayMode = 'ombre', petType = 'cat' }) {
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [searchDate, setSearchDate] = useState('');
 
+  const entryDates = useMemo(() =>
+    records.map(r => {
+      const d = new Date(r.date);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }),
+  [records]);
+
   const toggleEntry = (date) => {
     setExpandedEntries(prev => ({
       ...prev,
@@ -175,27 +182,17 @@ export default function Records({ displayMode = 'ombre', petType = 'cat' }) {
   }, []);
 
   const confirmDelete = (dateToDelete) => {
-    // Remove from journal
-    const journal = JSON.parse(localStorage.getItem('journal') || '{}');
-    delete journal[dateToDelete];
-    localStorage.setItem('journal', JSON.stringify(journal));
+    const removeFromStore = (key) => {
+      const data = JSON.parse(localStorage.getItem(key) || '{}');
+      delete data[dateToDelete];
+      localStorage.setItem(key, JSON.stringify(data));
+    };
 
-    // Remove from wellness history
-    const wellnessHistory = JSON.parse(localStorage.getItem('wellnessHistory') || '{}');
-    delete wellnessHistory[dateToDelete];
-    localStorage.setItem('wellnessHistory', JSON.stringify(wellnessHistory));
+    removeFromStore('journal');
+    removeFromStore('wellnessHistory');
+    removeFromStore('weatherCache');
+    removeFromStore('todosHistory');
 
-    // Remove from weather cache
-    const weatherCache = JSON.parse(localStorage.getItem('weatherCache') || '{}');
-    delete weatherCache[dateToDelete];
-    localStorage.setItem('weatherCache', JSON.stringify(weatherCache));
-
-    // Remove from todos history
-    const todosHistory = JSON.parse(localStorage.getItem('todosHistory') || '{}');
-    delete todosHistory[dateToDelete];
-    localStorage.setItem('todosHistory', JSON.stringify(todosHistory));
-
-    // Update records state
     setRecords(records.filter(r => r.date !== dateToDelete));
     setDeleteConfirm(null);
   };
@@ -304,10 +301,7 @@ export default function Records({ displayMode = 'ombre', petType = 'cat' }) {
             value={searchDate}
             onChange={setSearchDate}
             displayMode={displayMode}
-            entryDates={records.map(r => {
-              const d = new Date(r.date);
-              return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-            })}
+            entryDates={entryDates}
           />
           {searchDate && (
             <button
@@ -374,7 +368,6 @@ export default function Records({ displayMode = 'ombre', petType = 'cat' }) {
                   style={{ maxHeight: (!shouldCollapse || isExpanded) ? '2000px' : '0px' }}
                   className="overflow-hidden transition-all duration-500 ease-in-out"
                 >
-                  <>
                     {/* Weather Info */}
                     {record.weather && (
                 <div className={`bg-white rounded-xl p-3 mb-3 border-2 ${displayMode === 'dark' ? 'border-gray-500' : displayMode === 'light' ? 'border-gray-400' : 'border-purple-100'}`}>
@@ -473,7 +466,6 @@ export default function Records({ displayMode = 'ombre', petType = 'cat' }) {
                   )}
                 </div>
               )}
-                  </>
                 </div>
               </div>
             );
