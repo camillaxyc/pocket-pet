@@ -1,4 +1,124 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DAYS = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+
+function DatePicker({ value, onChange, displayMode, entryDates = [] }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const today = new Date();
+  const [viewMonth, setViewMonth] = useState(today.getMonth());
+  const [viewYear, setViewYear] = useState(today.getFullYear());
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (value) {
+      const [y, m] = value.split('-');
+      setViewMonth(parseInt(m) - 1);
+      setViewYear(parseInt(y));
+    }
+  }, [value]);
+
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setIsOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const firstDay = new Date(viewYear, viewMonth, 1).getDay();
+
+  const prevMonth = () => {
+    if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); }
+    else setViewMonth(m => m - 1);
+  };
+
+  const nextMonth = () => {
+    if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1); }
+    else setViewMonth(m => m + 1);
+  };
+
+  const handleDay = (day) => {
+    const d = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    onChange(d);
+    setIsOpen(false);
+  };
+
+  const displayLabel = value
+    ? (() => { const [y,m,d] = value.split('-'); return `${MONTHS[parseInt(m)-1]} ${parseInt(d)}, ${y}`; })()
+    : 'Search by date…';
+
+  const isDark = displayMode === 'dark';
+  const isLight = displayMode === 'light';
+
+  const popupBg = isDark ? 'bg-gray-800 border-purple-500' : 'bg-white border-purple-200';
+  const headerText = isDark ? 'text-purple-300' : 'text-purple-700';
+  const dayHeaderText = isDark ? 'text-gray-400' : 'text-purple-400';
+  const navBtn = isDark
+    ? 'text-purple-300 hover:bg-gray-700 rounded-full w-8 h-8 flex items-center justify-center text-lg font-bold transition-colors cursor-pointer'
+    : 'text-purple-500 hover:bg-purple-100 rounded-full w-8 h-8 flex items-center justify-center text-lg font-bold transition-colors cursor-pointer';
+
+  return (
+    <div ref={ref} className="relative w-full max-w-xs">
+      <button
+        onClick={() => setIsOpen(o => !o)}
+        className={`w-full rounded-2xl px-4 py-3 border-2 text-sm font-medium shadow-md transition-all cursor-pointer text-left flex items-center justify-between
+          ${isDark ? 'bg-gray-700 border-purple-400 text-gray-200 hover:border-purple-300'
+            : isLight ? 'bg-white border-gray-300 text-gray-600 hover:border-gray-400'
+            : 'bg-white border-purple-300 text-purple-600 hover:border-pink-400'}`}
+      >
+        <span>{displayLabel}</span>
+        <span className="text-base">🗓️</span>
+      </button>
+
+      {isOpen && (
+        <div className={`absolute top-full mt-2 left-0 right-0 z-50 rounded-2xl shadow-2xl border-2 p-4 ${popupBg}`}>
+          {/* Month/Year header */}
+          <div className="flex items-center justify-between mb-3">
+            <button onClick={prevMonth} className={navBtn}>‹</button>
+            <span className={`font-bold text-sm ${headerText}`}>{MONTHS[viewMonth]} {viewYear}</span>
+            <button onClick={nextMonth} className={navBtn}>›</button>
+          </div>
+
+          {/* Day headers */}
+          <div className="grid grid-cols-7 mb-1">
+            {DAYS.map(d => (
+              <div key={d} className={`text-center text-xs font-semibold py-1 ${dayHeaderText}`}>{d}</div>
+            ))}
+          </div>
+
+          {/* Day grid */}
+          <div className="grid grid-cols-7 gap-y-1">
+            {Array.from({ length: firstDay }).map((_, i) => <div key={`e${i}`} />)}
+            {Array.from({ length: daysInMonth }).map((_, i) => {
+              const day = i + 1;
+              const dateStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+              const isSelected = value === dateStr;
+              const isToday = day === today.getDate() && viewMonth === today.getMonth() && viewYear === today.getFullYear();
+              const hasEntry = entryDates.includes(dateStr);
+              return (
+                <button
+                  key={day}
+                  onClick={() => handleDay(day)}
+                  className={`text-xs rounded-full w-8 h-8 mx-auto flex items-center justify-center transition-all cursor-pointer font-medium relative
+                    ${isSelected
+                      ? 'bg-gradient-to-br from-pink-400 to-purple-500 text-white shadow-md'
+                      : hasEntry
+                      ? isDark ? 'bg-purple-600 text-white hover:bg-purple-500' : 'bg-gradient-to-br from-pink-200 to-purple-200 text-purple-800 hover:from-pink-300 hover:to-purple-300 font-semibold'
+                      : isToday
+                      ? isDark ? 'bg-purple-700 text-purple-200' : 'bg-purple-100 text-purple-700 font-bold'
+                      : isDark ? 'text-gray-200 hover:bg-gray-600' : 'text-gray-700 hover:bg-purple-50'
+                    }`}
+                >
+                  {day}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 const getToday = () => new Date().toDateString();
 
@@ -6,6 +126,7 @@ export default function Records({ displayMode = 'ombre', petType = 'cat' }) {
   const [records, setRecords] = useState([]);
   const [expandedEntries, setExpandedEntries] = useState({});
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [searchDate, setSearchDate] = useState('');
 
   const toggleEntry = (date) => {
     setExpandedEntries(prev => ({
@@ -176,15 +297,52 @@ export default function Records({ displayMode = 'ombre', petType = 'cat' }) {
         <h2 className={`${displayMode === 'dark' ? 'text-purple-300' : displayMode === 'light' ? 'text-gray-700' : 'text-purple-700'} text-2xl font-bold`}>📖 Your Records</h2>
       </div>
 
+      {/* Date Search */}
+      {records.length > 0 && (
+        <div className="mb-6 flex flex-col items-center">
+          <DatePicker
+            value={searchDate}
+            onChange={setSearchDate}
+            displayMode={displayMode}
+            entryDates={records.map(r => {
+              const d = new Date(r.date);
+              return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            })}
+          />
+          {searchDate && (
+            <button
+              onClick={() => setSearchDate('')}
+              className={`mt-2 text-xs font-semibold px-3 py-1 rounded-full transition-all cursor-pointer
+                ${displayMode === 'dark' ? 'text-purple-300 hover:text-purple-200' : 'text-purple-400 hover:text-pink-500'}`}
+            >
+              ✕ Clear
+            </button>
+          )}
+        </div>
+      )}
+
       {records.length === 0 ? (
         <div className={`${displayMode === 'ombre' ? 'bg-gradient-to-br from-purple-200 to-blue-200' : displayMode === 'dark' ? 'bg-gray-700' : displayMode === 'light' ? 'bg-gray-200' : displayMode === 'pastel' ? 'bg-purple-50' : 'bg-purple-200'} rounded-2xl p-8 border-2 ${displayMode === 'dark' ? 'border-gray-600' : displayMode === 'light' ? 'border-gray-400' : 'border-purple-100'} shadow-lg text-center`}>
           <p className={`${displayMode === 'dark' ? 'text-purple-300' : displayMode === 'light' ? 'text-gray-700' : 'text-purple-700'} text-lg`}>No past records yet. Keep journaling to build your history!</p>
         </div>
-      ) : (
+      ) : (() => {
+        const filteredRecords = searchDate
+          ? records.filter(r => new Date(r.date).toLocaleDateString('en-CA') === searchDate)
+          : records.slice(0, 5);
+
+        if (filteredRecords.length === 0) {
+          return (
+            <div className={`${displayMode === 'ombre' ? 'bg-gradient-to-br from-purple-200 to-blue-200' : displayMode === 'dark' ? 'bg-gray-700' : displayMode === 'light' ? 'bg-gray-200' : displayMode === 'pastel' ? 'bg-purple-50' : 'bg-purple-200'} rounded-2xl p-8 border-2 ${displayMode === 'dark' ? 'border-gray-600' : displayMode === 'light' ? 'border-gray-400' : 'border-purple-100'} shadow-lg text-center`}>
+              <p className={`${displayMode === 'dark' ? 'text-purple-300' : displayMode === 'light' ? 'text-gray-700' : 'text-purple-700'} text-lg`}>No entry found for that date.</p>
+            </div>
+          );
+        }
+
+        return (
         <div className="space-y-6">
-          {records.map(record => {
+          {filteredRecords.map(record => {
             const isExpanded = expandedEntries[record.date];
-            const shouldCollapse = records.length > 2;
+            const shouldCollapse = filteredRecords.length > 2;
 
             return (
               <div
@@ -318,7 +476,8 @@ export default function Records({ displayMode = 'ombre', petType = 'cat' }) {
             );
           })}
         </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
