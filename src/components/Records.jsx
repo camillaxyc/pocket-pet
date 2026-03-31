@@ -370,7 +370,10 @@ export default function Records({ displayMode = 'ombre', petType = 'cat' }) {
                 </div>
 
                 {/* Show content only if expanded or if there are 2 or fewer records */}
-                {(!shouldCollapse || isExpanded) && (
+                <div
+                  style={{ maxHeight: (!shouldCollapse || isExpanded) ? '2000px' : '0px' }}
+                  className="overflow-hidden transition-all duration-500 ease-in-out"
+                >
                   <>
                     {/* Weather Info */}
                     {record.weather && (
@@ -471,7 +474,7 @@ export default function Records({ displayMode = 'ombre', petType = 'cat' }) {
                 </div>
               )}
                   </>
-                )}
+                </div>
               </div>
             );
           })}
