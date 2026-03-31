@@ -139,9 +139,9 @@ export default function PetDisplay({ petType, username, onShowRecords, isCollaps
         {onShowRecords && (
           <button
             onClick={onShowRecords}
-            className={`${displayMode === 'light' ? 'bg-white hover:bg-gray-100 text-black' : getButtonClass('yellow') + ' text-white'} px-3 py-2 rounded-2xl transition-all shadow-lg cursor-pointer font-bold flex items-center text-sm min-w-[140px] whitespace-nowrap`}
+            className={`border-2 ${displayMode === 'dark' ? 'bg-gray-700 hover:bg-gray-600 border-purple-400 text-white' : displayMode === 'light' ? 'bg-white border-gray-400 text-gray-600 hover:bg-gray-50' : 'bg-white border-purple-400 text-purple-500 hover:bg-purple-50'} px-3 py-2 rounded-2xl transition-all shadow-lg cursor-pointer font-bold flex items-center text-sm min-w-[140px] whitespace-nowrap`}
           >
-            <span className="text-lg mr-3">{isOnRecordsPage ? '🏠' : '📖'}</span>
+            <span className="text-lg mr-3">{isOnRecordsPage ? '🏠' : '✏️'}</span>
             <span>{isOnRecordsPage ? 'Home' : 'Your Records'}</span>
           </button>
         )}
