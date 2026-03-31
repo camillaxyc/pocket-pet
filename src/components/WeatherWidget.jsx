@@ -33,33 +33,55 @@ export default function WeatherWidget({ zipcode, displayMode = 'ombre' }) {
   const [showWeeklyForecast, setShowWeeklyForecast] = useState(false);
   const [forecastIndex, setForecastIndex] = useState(0);
   const [unit, setUnit] = useState(() => {
-    // Load preference from localStorage, default to Fahrenheit
     return localStorage.getItem('tempUnit') || 'fahrenheit';
   });
+  const [activeLocation, setActiveLocation] = useState(() => {
+    return localStorage.getItem('weatherLocation') || zipcode || '10001';
+  });
+  const [editingLocation, setEditingLocation] = useState(false);
+  const [locationInput, setLocationInput] = useState('');
 
+  const handleLocationDone = () => {
+    const val = locationInput.trim();
+    if (!val) return;
+    setActiveLocation(val);
+    localStorage.setItem('weatherLocation', val);
+    setEditingLocation(false);
+    setLocationInput('');
+    setShowWeeklyForecast(false);
+  };
 
   useEffect(() => {
-    // Default to New York zipcode if none provided
-    const activeZipcode = zipcode && zipcode.trim() !== '' ? zipcode : '10001';
-
     const fetchWeather = async () => {
       setLoading(true);
       setError(null);
       try {
-        // First, get coordinates from zipcode using zippopotam.us (free, no API key)
-        const geoResponse = await fetch(`https://api.zippopotam.us/us/${activeZipcode}`);
+        let lat, lon, location;
 
-        if (!geoResponse.ok) {
-          throw new Error('Invalid zipcode');
+        const isZipcode = /^\d{5}$/.test(activeLocation.trim());
+
+        if (isZipcode) {
+          // Zipcode path
+          const geoResponse = await fetch(`https://api.zippopotam.us/us/${activeLocation.trim()}`);
+          if (!geoResponse.ok) throw new Error('Invalid zipcode');
+          const geoData = await geoResponse.json();
+          lat = geoData.places[0].latitude;
+          lon = geoData.places[0].longitude;
+          location = `${geoData.places[0]['place name']}, ${geoData.places[0]['state abbreviation']}`;
+        } else {
+          // City name path using Open-Meteo geocoding
+          const geoResponse = await fetch(
+            `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(activeLocation.trim())}&count=1&language=en&format=json`
+          );
+          if (!geoResponse.ok) throw new Error('City not found');
+          const geoData = await geoResponse.json();
+          if (!geoData.results || geoData.results.length === 0) throw new Error('City not found');
+          lat = geoData.results[0].latitude;
+          lon = geoData.results[0].longitude;
+          location = `${geoData.results[0].name}${geoData.results[0].admin1 ? ', ' + geoData.results[0].admin1 : ''}`;
         }
 
-        const geoData = await geoResponse.json();
-        const lat = geoData.places[0].latitude;
-        const lon = geoData.places[0].longitude;
-        const location = `${geoData.places[0]['place name']}, ${geoData.places[0]['state abbreviation']}`;
-
         // Then get weather from open-meteo (free, no API key needed)
-        // Include both current weather and 7-day daily min/max temperatures
         const weatherResponse = await fetch(
           `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min,weather_code&temperature_unit=${unit}&timezone=auto&forecast_days=7`
         );
@@ -140,7 +162,7 @@ export default function WeatherWidget({ zipcode, displayMode = 'ombre' }) {
     };
 
     fetchWeather();
-  }, [zipcode, unit]);
+  }, [activeLocation, unit]);
 
   const toggleUnit = () => {
     setIsTransitioning(true);
@@ -189,28 +211,76 @@ export default function WeatherWidget({ zipcode, displayMode = 'ombre' }) {
 
   return (
     <div className={`${bgClass} rounded-2xl p-5 border-2 ${displayMode === 'dark' ? 'border-gray-600' : displayMode === 'light' ? 'border-gray-300' : 'border-blue-100'} shadow-lg text-center h-[284px] flex flex-col items-center relative overflow-hidden`}>
-      <div className="absolute top-3 right-3 flex gap-2">
+
+      {/* Top buttons row */}
+      <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2 z-10">
         <button
-          onClick={toggleUnit}
-          className={`${getButtonClass()} px-3 py-1 rounded-lg text-xs font-semibold transition-all shadow-sm cursor-pointer`}
+          onClick={() => { setEditingLocation(e => !e); setLocationInput(activeLocation); setShowWeeklyForecast(false); }}
+          className={`${getButtonClass()} h-7 px-3 rounded-lg text-sm font-semibold transition-all shadow-sm cursor-pointer flex items-center justify-center`}
         >
-          Switch to {switchToUnit}
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" className="w-4 h-4">
+            <path fillRule="evenodd" d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-2.013 3.5-4.619 3.5-7.327A8.24 8.24 0 0012 3.75a8.24 8.24 0 00-7.79 8.25c0 2.708 1.556 5.314 3.5 7.327a19.58 19.58 0 002.682 2.282 16.975 16.975 0 001.145.742zM12 13.5a2.25 2.25 0 100-4.5 2.25 2.25 0 000 4.5z" clipRule="evenodd" />
+          </svg>
         </button>
-        {weather && (
-          <button
-            onClick={() => setShowWeeklyForecast(!showWeeklyForecast)}
-            className={`${getButtonClass()} px-3 py-1 rounded-lg text-xs font-semibold transition-all shadow-sm cursor-pointer`}
-          >
-            {showWeeklyForecast ? 'Today' : 'Week'}
-          </button>
-        )}
+        <div className="flex gap-2 ml-auto">
+          {!editingLocation && (
+            <button
+              onClick={toggleUnit}
+              className={`${getButtonClass()} h-7 px-3 rounded-lg text-sm font-semibold transition-all shadow-sm cursor-pointer flex items-center`}
+            >
+              {unit === 'fahrenheit' ? '°C' : '°F'}
+            </button>
+          )}
+          {weather && !editingLocation && (
+            <button
+              onClick={() => setShowWeeklyForecast(v => !v)}
+              className={`${getButtonClass()} h-7 px-3 rounded-lg text-sm font-semibold transition-all shadow-sm cursor-pointer flex items-center`}
+            >
+              {showWeeklyForecast ? 'Today' : 'Week'}
+            </button>
+          )}
+        </div>
       </div>
 
       <div
         className="transition-opacity duration-200 ease-in-out w-full flex-1 flex flex-col pt-8"
         style={{ opacity: isTransitioning ? 0 : 1 }}
       >
-        {loading ? (
+        {editingLocation ? (
+          <div className="flex-1 flex flex-col items-center justify-center gap-3">
+            <p className={`text-xs font-bold tracking-wide uppercase ${displayMode === 'dark' ? 'text-purple-300' : displayMode === 'light' ? 'text-gray-500' : 'text-purple-500'}`}>
+              Change Location
+            </p>
+
+            <input
+              autoFocus
+              type="text"
+              value={locationInput}
+              onChange={e => setLocationInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleLocationDone()}
+              placeholder="City or zipcode…"
+              className={`w-56 rounded-xl px-3 py-2 text-sm border-2 text-center focus:outline-none focus:ring-2
+                ${displayMode === 'dark'
+                  ? 'bg-gray-600 border-gray-500 text-gray-200 placeholder-gray-400 focus:ring-purple-400'
+                  : 'bg-white border-purple-200 text-gray-700 placeholder-gray-400 focus:ring-pink-300'}`}
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setEditingLocation(false); setLocationInput(''); }}
+                className={`px-4 py-2 rounded-xl text-sm font-semibold cursor-pointer transition-all
+                  ${displayMode === 'dark' ? 'bg-gray-600 hover:bg-gray-500 text-gray-200' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}`}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleLocationDone}
+                className={`${getButtonClass()} px-4 py-2 rounded-xl text-sm font-semibold cursor-pointer transition-all shadow-sm`}
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        ) : loading ? (
           <div className="flex-1 flex items-center justify-center">
             <p className={`${displayMode === 'dark' ? 'text-purple-300' : displayMode === 'light' ? 'text-gray-700' : 'text-purple-700'} font-bold`}>Loading weather...</p>
           </div>
